@@ -28,9 +28,7 @@ def location_id():
 @pytest.fixture()
 def client(location_id: str):
     """Provides a ModelArmorClient instance."""
-    yield modelarmor_v1.ModelArmorClient(
-        client_options=ClientOptions(api_endpoint=f"modelarmor.{location_id}.rep.googleapis.com")
-    )
+    yield modelarmor_v1.ModelArmorClient()
 
 @pytest.fixture()
 def simple_filter_config_data():
