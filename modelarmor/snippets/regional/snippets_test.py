@@ -1,23 +1,25 @@
 import pytest
 import time
-from typing import Iterator, Optional, Tuple, Union
+import os
+from typing import Dict, Iterator, Optional, Tuple, Union
 import uuid
 
 from google.api_core import exceptions, retry
 from google.api_core.client_options import ClientOptions
 from google.cloud import modelarmor_v1
 
-from modelarmor.create_model_armor_template import create_model_armor_template
-from modelarmor.update_model_armor_template import update_model_armor_template
-from modelarmor.view_model_armor_template import view_model_armor_template
-from modelarmor.delete_model_armor_template import delete_model_armor_template
-from modelarmor.list_model_armor_templates import list_model_armor_templates
-from modelarmor.sanitize_user_prompt import sanitize_user_prompt
-from modelarmor.sanitize_model_response import sanitize_model_response
+from regional.create_model_armor_template import create_model_armor_template
+from regional.update_model_armor_template import update_model_armor_template
+from regional.view_model_armor_template import view_model_armor_template
+from regional.delete_model_armor_template import delete_model_armor_template
+from regional.list_model_armor_templates import list_model_armor_templates
+from regional.sanitize_user_prompt import sanitize_user_prompt
+from regional.sanitize_model_response import sanitize_model_response
 
 @pytest.fixture()
 def project_id():
-    yield "gma-api-53286"
+    # yield os.environ["GOOGLE_CLOUD_PROJECT"]
+    yield "ma-crest-data-test"
 
 @pytest.fixture()
 def location_id():
@@ -31,11 +33,9 @@ def client(location_id: str):
     )
 
 @pytest.fixture()
-def armor_test_data(project_id: str, location_id: str):
+def simple_filter_config_data():
     """Generates test data for Model Armor and yields it to the test cases."""
-    project_id = project_id
-    location_id = location_id
-    filter_config_data = {
+    yield {
         "rai_settings": {
             "rai_filters": [
                 {
@@ -49,43 +49,6 @@ def armor_test_data(project_id: str, location_id: str):
             ]
         },
         "sdp_settings": {},
-        "pi_and_jailbreak_filter_settings": {},
-        "malicious_uri_filter_settings": {}
-    }
-    yield project_id, location_id, filter_config_data
-
-@pytest.fixture()
-def advance_sdp_config_data():
-    yield {
-        "rai_settings": {
-            "rai_filters": [
-                {
-                    "filter_type": "HATE_SPEECH",
-                    "confidence_level": "MEDIUM_AND_ABOVE"
-                }, 
-                {
-                    "filter_type": "HARASSMENT",
-                    "confidence_level": "HIGH"
-                }, 
-                {
-                    "filter_type": "DANGEROUS",
-                    "confidence_level": "MEDIUM_AND_ABOVE"
-                },
-                {
-                    "filter_type": "SEXUALLY_EXPLICIT",
-                    "confidence_level": "MEDIUM_AND_ABOVE"
-                }
-            ]
-        },
-        "sdp_settings": {
-            "basic_config": {
-                "filter_enforcement": "ENABLED"
-            },
-            "advanced_config": {
-                "inspect_template": "projects/gma-api-53286/locations/us-central1/inspectTemplates/sdp-test-template",
-                "deidentify_template": "projects/gma-api-53286/locations/us-central1/deidentifyTemplates/sdp-deidentify-template"
-            }
-        },
         "pi_and_jailbreak_filter_settings": {},
         "malicious_uri_filter_settings": {}
     }
@@ -123,6 +86,42 @@ def basic_sdp_config_data():
     }
 
 @pytest.fixture()
+def advance_sdp_config_data():
+    yield {
+        "rai_settings": {
+            "rai_filters": [
+                {
+                    "filter_type": "HATE_SPEECH",
+                    "confidence_level": "MEDIUM_AND_ABOVE"
+                }, 
+                {
+                    "filter_type": "HARASSMENT",
+                    "confidence_level": "HIGH"
+                }, 
+                {
+                    "filter_type": "DANGEROUS",
+                    "confidence_level": "MEDIUM_AND_ABOVE"
+                },
+                {
+                    "filter_type": "SEXUALLY_EXPLICIT",
+                    "confidence_level": "MEDIUM_AND_ABOVE"
+                }
+            ]
+        },
+        "sdp_settings": {
+            "basic_config": {
+                "filter_enforcement": "ENABLED"
+            },
+            "advanced_config": {
+                "inspect_template": "projects/ma-crest-data-test/locations/us-central1/inspectTemplates/personal-infor-inspect",
+                "deidentify_template": "projects/ma-crest-data-test/locations/us-central1/deidentifyTemplates/personal-info-de-identify"
+            }
+        },
+        "pi_and_jailbreak_filter_settings": {},
+        "malicious_uri_filter_settings": {}
+    }
+
+@pytest.fixture()
 def user_prompt():
     yield {
         "user_prompt_data": {
@@ -140,32 +139,42 @@ def model_response():
     }
 
 @retry.Retry()
-def retry_client_delete_template(
+def retry_ma_create_template(
+    client: modelarmor_v1.ModelArmorClient,
+    parent: str,
+    template_id: str,
+    filter_config_data: Dict,
+):
+    print(f"Creating template {template_id}")
+
+    filter_config = modelarmor_v1.FilterConfig(**filter_config_data)
+
+    template = modelarmor_v1.Template(
+        filter_config=filter_config
+    )
+
+    create_request = modelarmor_v1.CreateTemplateRequest(
+        parent=parent,
+        template_id=template_id,
+        template=template
+    )
+    return client.create_template(
+        request=create_request
+    )
+
+@retry.Retry()
+def retry_ma_delete_template(
     client: modelarmor_v1.ModelArmorClient,
     name: str,
 ) -> None:
     print(f"Deleting template {name}")
     return client.delete_template(name=name)
 
-@retry.Retry()
-def retry_client_create_template(
-    client: modelarmor_v1.ModelArmorClient,
-    parent: str,
-    template_id: str,
-    template: modelarmor_v1.Template,
-) -> modelarmor_v1.Template:
-    print(f"Creating template {template_id}")
-    return client.create_template(
-        parent=parent,
-        template_id=template_id,
-        template=template
-    )
-
 @pytest.fixture()
 def template_id(
-    client: modelarmor_v1.ModelArmorClient,
     project_id: str,
-    location_id: str
+    location_id: str,
+    client: modelarmor_v1.ModelArmorClient
 ):
     template_id = f"modelarmor-template-{uuid.uuid4()}"
 
@@ -173,154 +182,112 @@ def template_id(
 
     try:
         time.sleep(5)
-        retry_client_delete_template(client, name=f"projects/{project_id}/locations/{location_id}/templates/{template_id}")
+        retry_ma_delete_template(client, name=f"projects/{project_id}/locations/{location_id}/templates/{template_id}")
     except exceptions.NotFound:
-        # Secret was already deleted, probably in the test
+        # Template was already deleted, probably in the test
         print(f"Template {template_id} was not found.")
 
 @pytest.fixture()
-def template(
+def simple_template(
     client: modelarmor_v1.ModelArmorClient,
     project_id: str,
     location_id: str,
-    advance_sdp_config_data: dict,
+    template_id: str,
+    simple_filter_config_data: Dict
 ):
-    template_id=f"modelarmor-template-{uuid.uuid4()}"
-    
-    template = modelarmor_v1.Template(
-        name=f"projects/{project_id}/locations/{location_id}/templates/{template_id}",
-        filter_config=advance_sdp_config_data
-    )
 
-    retry_client_create_template(
+    retry_ma_create_template(
         client,
         parent=f"projects/{project_id}/locations/{location_id}",
         template_id=template_id,
-        template=template
+        filter_config_data=simple_filter_config_data
+    )
+
+    yield template_id, simple_filter_config_data
+
+@pytest.fixture()
+def advance_sdp_template(
+    client: modelarmor_v1.ModelArmorClient,
+    project_id: str,
+    location_id: str,
+    template_id: str,
+    advance_sdp_config_data: Dict
+):
+    retry_ma_create_template(
+        client,
+        parent=f"projects/{project_id}/locations/{location_id}",
+        template_id=template_id,
+        filter_config_data=advance_sdp_config_data
     )
 
     yield template_id, advance_sdp_config_data
-
-    try:
-        time.sleep(5)
-        retry_client_delete_template(
-            client,
-            name=f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
-        )
-    except exceptions.NotFound:
-        print(f"Template {template_id} was not found.")
 
 @pytest.fixture()
 def basic_sdp_template(
     client: modelarmor_v1.ModelArmorClient,
     project_id: str,
     location_id: str,
-    basic_sdp_config_data: dict
+    template_id: str,
+    basic_sdp_config_data: Dict
 ):
-    template_id=f"modelarmor-template-{uuid.uuid4()}"
-    template = modelarmor_v1.Template(
-        name=f"projects/{project_id}/locations/{location_id}/templates/{template_id}",
-        filter_config=basic_sdp_config_data
-    )
-
-    retry_client_create_template(
-        client, 
+    retry_ma_create_template(
+        client,
         parent=f"projects/{project_id}/locations/{location_id}",
         template_id=template_id,
-        template=template
+        filter_config_data=basic_sdp_config_data
     )
 
     yield template_id, basic_sdp_config_data
 
-    try:
-        time.sleep(5)
-        retry_client_delete_template(
-            client,
-            name=f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
-        )
-    except exceptions.NotFound:
-        print(f"Template {template_id} was not found.")
-
-def test_create_model_armor_template(armor_test_data, template_id):
+def test_create_model_armor_template(project_id, location_id, simple_filter_config_data, template_id):
     """
     Tests that the create_model_armor_template function returns a template name
     that matches the expected format.
     """
-    project_id, location_id, filter_config_data = armor_test_data
-
     created_template_name = create_model_armor_template(
-        project_id, location_id, template_id, filter_config_data
+        project_id, location_id, template_id, simple_filter_config_data
     )
-
     expected_name_format = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
 
     assert created_template_name == expected_name_format, "Template name does not match the expected format."
 
-def test_create_model_armor_basic_sdp_template(armor_test_data, template_id, basic_sdp_config_data):
+def test_create_model_armor_with_basic_sdp(project_id, location_id, basic_sdp_config_data, template_id):
     """
     Tests that the create_model_armor_template function returns a template name
-    that matches the expected format, given a basic sdp config data as input.
+    that matches the expected format.
     """
-    project_id, location_id, _ = armor_test_data
-    filter_config_data = basic_sdp_config_data
-
     created_template_name = create_model_armor_template(
-        project_id, location_id, template_id, filter_config_data
+        project_id, location_id, template_id, basic_sdp_config_data
     )
-
     expected_name_format = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
 
     assert created_template_name == expected_name_format, "Template name does not match the expected format."
 
-def test_update_model_armor_template(armor_test_data, template):
+def test_create_model_armor_with_advance_sdp(project_id, location_id, advance_sdp_config_data, template_id):
     """
-    Tests that the update_model_armor_template function returns a template name
+    Tests that the create_model_armor_template function returns a template name
     that matches the expected format.
     """
-    project_id, location_id, _ = armor_test_data
-    template_id, filter_config_data = template
-
-    updated_template_name = update_model_armor_template(
-        project_id, location_id, template_id, filter_config_data
+    created_template_name = create_model_armor_template(
+        project_id, location_id, template_id, advance_sdp_config_data
     )
-
     expected_name_format = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
 
-    assert updated_template_name == expected_name_format, "Template name does not match the expected format."
+    assert created_template_name == expected_name_format, "Template name does not match the expected format."
 
-def test_view_model_armor_template(armor_test_data, template):
+def test_delete_model_armor_template(project_id, location_id, simple_template):
     """
-    Tests that the view_model_armor_template function returns a template name
-    that matches the expected format.
+    Tests that the delete_model_armor_template function deletes a template
     """
-    project_id, location_id, _ = armor_test_data
-    template_id, _ = template
+    template_id, _= simple_template
+    expected_name = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
 
-    view_template_name = view_model_armor_template(
-        project_id, location_id, template_id
-    )
-
-    expected_name_format = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
-    assert view_template_name.name == expected_name_format, "Template name does not match the expected format."
-
-def test_delete_model_armor_template(armor_test_data, template):
-    """
-    Tests that the delete_model_armor_template function deletes the template
-    successfully.
-    """
-    project_id, location_id, _ = armor_test_data
-    template_id, _ = template
-
-    # check the template exists
     template_name = view_model_armor_template(
         project_id, location_id, template_id
     )
-    assert template_name.name == f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
+    assert template_name.name == expected_name, "Template name does not match the expected format."
 
-    # delete the template
-    delete_model_armor_template(
-        project_id, location_id, template_id
-    )
+    delete_model_armor_template(project_id, location_id, template_id)
 
     # check the template is deleted
     with pytest.raises(exceptions.NotFound):
@@ -328,25 +295,23 @@ def test_delete_model_armor_template(armor_test_data, template):
             project_id, location_id, template_id
         )
 
-def test_list_model_armor_templates(armor_test_data, template):
+def test_list_model_armor_templates(project_id, location_id, simple_template):
     """
     Tests that the list_model_armor_templates function returns a list of templates
     containing the created template.
     """
-    project_id, location_id, _ = armor_test_data
-    template_id, _ = template
 
     templates = list_model_armor_templates(project_id, location_id)
 
+    template_id, _ = simple_template
     expected_template_name = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
     assert any(
         template.name == expected_template_name for template in templates), "Template does not exist in the list"
-
-def test_sanitize_user_prompt_with_basic_sdp_template(armor_test_data, basic_sdp_template, user_prompt):
+    
+def test_sanitize_user_prompt_with_basic_sdp_template(project_id, location_id, basic_sdp_template, user_prompt):
     """
     Tests that the model response is sanitized correctly with a basic sdp template
     """
-    project_id, location_id, _ = armor_test_data
     template_id, _ = basic_sdp_template
     
     sanitized_prompt = sanitize_user_prompt(project_id, location_id, template_id, user_prompt)
@@ -359,14 +324,12 @@ def test_sanitize_user_prompt_with_basic_sdp_template(armor_test_data, basic_sdp
     info_type_found = any(finding.info_type == "US_INDIVIDUAL_TAXPAYER_IDENTIFICATION_NUMBER" for finding in sdp_filter_result.inspect_result.findings)
     assert info_type_found, "Info type US_INDIVIDUAL_TAXPAYER_IDENTIFICATION_NUMBER not found in any finding"
 
-def test_sanitize_user_prompt_with_advance_sdp_template(armor_test_data, template, user_prompt):
+def test_sanitize_user_prompt_with_advance_sdp_template(project_id, location_id, advance_sdp_template, user_prompt):
     """
     Tests that the user prompt is sanitized correctly with an advance sdp template
     """
-    project_id, location_id, _ = armor_test_data
-    template_id, _ = template
-    expected_value = ("My phone number is 954-321-7890 and my email is XXXXXXXXXXXXXXXXX list me the "+ 
-        "reason why i can not communicate. Also,  can you remember my ITIN : 988-86-1234")
+    template_id, _ = advance_sdp_template
+    expected_value = ("My phone number is [PHONE_NUMBER] and my email is [EMAIL] list me the reason why i can not communicate. Also, can you remember my ITIN : 988-86-1234")
     
     sanitized_prompt = sanitize_user_prompt(project_id, location_id, template_id, user_prompt)
 
@@ -375,14 +338,12 @@ def test_sanitize_user_prompt_with_advance_sdp_template(armor_test_data, templat
     sanitized_text = next((value.sdp_filter_result.deidentify_result.data.text for key, value in sanitized_prompt.sanitization_result.filter_results.items() if key == "sdp"), "")
     assert sanitized_text == expected_value
 
-def test_model_response_with_basic_sdp_template(armor_test_data, basic_sdp_template, model_response):
+def test_model_response_with_basic_sdp_template(project_id, location_id, basic_sdp_template, model_response):
     """
     Tests that the model response is sanitized correctly with a basic sdp template
     """
-    project_id, location_id, _ = armor_test_data
     template_id, _ = basic_sdp_template
-    expected_value = "x"
-
+    
     sanitized_response = sanitize_model_response(project_id, location_id, template_id, model_response)
 
     assert "sdp" in sanitized_response.sanitization_result.filter_results, "sdp key not found in filter results"
@@ -393,18 +354,44 @@ def test_model_response_with_basic_sdp_template(armor_test_data, basic_sdp_templ
     info_type_found = any(finding.info_type == "US_INDIVIDUAL_TAXPAYER_IDENTIFICATION_NUMBER" for finding in sdp_filter_result.inspect_result.findings)
     assert info_type_found, "Info type US_INDIVIDUAL_TAXPAYER_IDENTIFICATION_NUMBER not found in any finding"
 
-def test_model_response_with_advance_sdp_template(armor_test_data, template, model_response):
+def test_model_response_with_advance_sdp_template(project_id, location_id, advance_sdp_template, model_response):
     """
     Tests that the model response is sanitized correctly with an advance sdp template
     """
-    project_id, location_id, _ = armor_test_data
-    template_id, _ = template
-    expected_value = "Here is my Email address: XXXXXXXXXXXXXXXXX Here is my phone number: 954-321-7890 Here is my ITIN: 988-86-1234"
+    template_id, _ = advance_sdp_template
+    expected_value = ("Here is my Email address: [EMAIL] Here is my phone number: [PHONE_NUMBER] Here is my ITIN: 988-86-1234")
 
     sanitized_response = sanitize_model_response(project_id, location_id, template_id, model_response)
-
-    print("sanitized_response", sanitized_response)
     assert "sdp" in sanitized_response.sanitization_result.filter_results, "sdp key not found in filter results"
 
     sanitized_text = next((value.sdp_filter_result.deidentify_result.data.text for key, value in sanitized_response.sanitization_result.filter_results.items() if key == "sdp"), "")
     assert sanitized_text == expected_value
+
+def test_update_model_armor_template(project_id, location_id, simple_template, basic_sdp_config_data):
+    """
+    Tests that the update_model_armor_template function returns a template name
+    that matches the expected format.
+    """
+    template_id, _ = simple_template
+
+    updated_template_name = update_model_armor_template(
+        project_id, location_id, template_id, basic_sdp_config_data
+    )
+
+    expected_name_format = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
+
+    assert updated_template_name == expected_name_format, "Template name does not match the expected format."
+
+def test_view_model_armor_template(project_id, location_id, simple_template):
+    """
+    Tests that the view_model_armor_template function returns a template name
+    that matches the expected format.
+    """
+    template_id, _ = simple_template
+
+    view_template_name = view_model_armor_template(
+        project_id, location_id, template_id
+    )
+
+    expected_name_format = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
+    assert view_template_name.name == expected_name_format, "Template name does not match the expected format."
