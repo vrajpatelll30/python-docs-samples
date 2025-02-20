@@ -45,14 +45,15 @@ def delete_model_armor_template(project_id: str, location_id: str, template_id: 
 
 if __name__ == "__main__":
     # Sample usage
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument("project_id", help="Google Cloud project ID")
-    parser.add_argument("location_id", help="Google Cloud location ID")
-    parser.add_argument("template_id", help="ID of the template to delete")
+    # parser = argparse.ArgumentParser(
+    #     description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    # )
+    # parser.add_argument("project_id", help="Google Cloud project ID")
+    # parser.add_argument("location_id", help="Google Cloud location ID")
+    # parser.add_argument("template_id", help="ID of the template to delete")
 
-    args = parser.parse_args()
+    # args = parser.parse_args()
 
     # Call the function to delete the template
-    delete_model_armor_template(args.project_id, args.location_id, args.template_id)
+    # delete_model_armor_template(args.project_id, args.location_id, args.template_id)
+    delete_model_armor_template("ma-crest-data-test", "us-central1", "test-template-with-labels")

@@ -51,14 +51,15 @@ def view_model_armor_template(project_id: str, location_id: str, template_id: st
 
 if __name__ == "__main__":
     # Sample usage
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument("project_id", help="The project ID where the template exists.")
-    parser.add_argument("location_id", help="The location where the template exists.")
-    parser.add_argument("template_id", help="The ID of the template to view.")
+    # parser = argparse.ArgumentParser(
+    #     description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    # )
+    # parser.add_argument("project_id", help="The project ID where the template exists.")
+    # parser.add_argument("location_id", help="The location where the template exists.")
+    # parser.add_argument("template_id", help="The ID of the template to view.")
     
-    args = parser.parse_args()
+    # args = parser.parse_args()
 
     # Call the function to view template details
-    view_model_armor_template(args.project_id, args.location_id, args.template_id)
+    # view_model_armor_template(args.project_id, args.location_id, args.template_id)
+    view_model_armor_template("ma-crest-data-test", "us-central1", "temp-mihir")

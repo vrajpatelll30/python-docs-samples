@@ -41,8 +41,11 @@ def list_model_armor_templates(project_id: str, location_id: str) -> List[str]:
     parent = f"projects/{project_id}/locations/{location_id}"
 
     # List templates request
-    templates = client.list_templates(parent=parent)
-    
+    templates = client.list_templates(
+        request=modelarmor_v1.types.ListTemplatesRequest(
+            parent=parent
+        )
+    )
     # Print templates name only
     templates_name = [template.name for template in templates]
     print(f"Templates Found: {', '.join(template_name for template_name in templates_name)}")
@@ -52,14 +55,15 @@ def list_model_armor_templates(project_id: str, location_id: str) -> List[str]:
 
 if __name__ == "__main__":
     # Sample usage
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
+    # parser = argparse.ArgumentParser(
+    #     description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    # )
 
-    parser.add_argument("project_id", help="Google Cloud project ID")
-    parser.add_argument("location_id", help="Google Cloud location")
+    # parser.add_argument("project_id", help="Google Cloud project ID")
+    # parser.add_argument("location_id", help="Google Cloud location")
 
-    args = parser.parse_args()
+    # args = parser.parse_args()
 
-    # Call the function to list templates
-    list_model_armor_templates(args.project_id, args.location_id)
+    # # Call the function to list templates
+    # list_model_armor_templates(args.project_id, args.location_id)
+    list_model_armor_templates("ma-crest-data-test", "us-central1")

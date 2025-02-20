@@ -1,0 +1,72 @@
+
+# python-docs-samples/modelarmor/create_model_armor_template_with_metadata.py
+
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import argparse
+import typing
+from google.cloud import modelarmor_v1
+from google.api_core.client_options import ClientOptions
+
+# [START create_model_armor_template_with_metadata]
+def create_model_armor_template_with_metadata(
+        project_id: str, 
+        location_id: str,
+        template_id: str,
+        filter_config_data: typing.Dict[str, typing.Any],
+        metadata: typing.Dict[str, typing.Any]) -> modelarmor_v1.types.service.Template:
+
+    """
+    Creates a new model armor template.
+
+    Args:
+        project_id (str): Google Cloud project ID where the template will be created.
+        location_id (str): Google Cloud location where the template will be created.
+        template_id (str): ID for the template to create.
+        filter_config (dict): Configuration for the filter settings of the template.
+
+    Returns:
+        The created Template's name.
+    """
+    
+    # Create a Model Armor client
+    client = modelarmor_v1.ModelArmorClient(
+        client_options=ClientOptions(api_endpoint=f"modelarmor.{location_id}.rep.googleapis.com")
+    )
+
+    parent = f"projects/{project_id}/locations/{location_id}"
+    filter_config = modelarmor_v1.FilterConfig(**filter_config_data)
+
+    template = modelarmor_v1.Template(
+        filter_config=filter_config,
+        template_metadata=modelarmor_v1.Template.TemplateMetadata(metadata)
+    )
+
+    # CreateTemplatRequest creation
+    create_template = modelarmor_v1.CreateTemplateRequest(
+        parent=parent,
+        template_id=template_id,
+        template=template,
+    )
+
+    # Template creation request
+    response = client.create_template(
+        request=create_template,
+    )
+
+    print(f"Created Model Armor Template: {response.name}")
+    # [END create_model_armor_template_with_metadata]
+
+    return response

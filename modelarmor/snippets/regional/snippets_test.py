@@ -9,10 +9,17 @@ from google.api_core.client_options import ClientOptions
 from google.cloud import modelarmor_v1
 
 from regional.create_model_armor_template import create_model_armor_template
+from regional.create_model_armor_template_with_advance_spd import create_model_armor_template_with_advance_spd
+from regional.create_model_armor_template_with_metadata import create_model_armor_template_with_metadata
+from regional.create_model_armor_template_with_labels import create_model_armor_template_with_labels
 from regional.update_model_armor_template import update_model_armor_template
+from regional.update_model_armor_template_with_lables import update_model_armor_template_with_lables
+from regional.update_model_armor_template_with_metadata import update_model_armor_template_with_metadata
+from regional.update_model_armor_template_with_mask_configuration import update_model_armor_template_with_mask_configuration
 from regional.view_model_armor_template import view_model_armor_template
 from regional.delete_model_armor_template import delete_model_armor_template
 from regional.list_model_armor_templates import list_model_armor_templates
+from regional.list_model_armor_templates_with_filter import list_model_armor_templates_with_filter
 from regional.sanitize_user_prompt import sanitize_user_prompt
 from regional.sanitize_model_response import sanitize_model_response
 
@@ -31,6 +38,20 @@ def client(location_id: str):
     yield modelarmor_v1.ModelArmorClient(
         client_options=ClientOptions(api_endpoint=f"modelarmor.{location_id}.rep.googleapis.com")
     )
+
+@pytest.fixture()
+def template_metadata():
+    yield {
+        "ignore_partial_invocation_failures": True,
+        "log_sanitize_operations": True
+    }
+
+@pytest.fixture()
+def template_labels():
+    yield {
+        "name": "wrench",
+        "count": "3"
+    }
 
 @pytest.fixture()
 def simple_filter_config_data():
@@ -244,36 +265,88 @@ def test_create_model_armor_template(project_id, location_id, simple_filter_conf
     Tests that the create_model_armor_template function returns a template name
     that matches the expected format.
     """
-    created_template_name = create_model_armor_template(
+    created_template = create_model_armor_template(
         project_id, location_id, template_id, simple_filter_config_data
     )
     expected_name_format = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
 
-    assert created_template_name == expected_name_format, "Template name does not match the expected format."
+    assert created_template.name == expected_name_format, "Template name does not match the expected format."
 
-def test_create_model_armor_with_basic_sdp(project_id, location_id, basic_sdp_config_data, template_id):
+def test_create_model_armor_template_with_basic_sdp(project_id, location_id, basic_sdp_config_data, template_id):
     """
     Tests that the create_model_armor_template function returns a template name
     that matches the expected format.
     """
-    created_template_name = create_model_armor_template(
+    created_template = create_model_armor_template(
         project_id, location_id, template_id, basic_sdp_config_data
     )
     expected_name_format = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
 
-    assert created_template_name == expected_name_format, "Template name does not match the expected format."
+    assert created_template.name == expected_name_format, "Template name does not match the expected format."
 
-def test_create_model_armor_with_advance_sdp(project_id, location_id, advance_sdp_config_data, template_id):
+    filter_enforcement = created_template.filter_config.sdp_settings.basic_config.filter_enforcement
+
+    assert filter_enforcement.name == "ENABLED", f"Expected filter_enforcement to be ENABLED, but got {filter_enforcement}"
+
+def test_create_model_armor_template_with_advance_sdp(project_id, location_id, advance_sdp_config_data, template_id):
     """
     Tests that the create_model_armor_template function returns a template name
     that matches the expected format.
     """
-    created_template_name = create_model_armor_template(
+    created_template = create_model_armor_template_with_advance_spd(
         project_id, location_id, template_id, advance_sdp_config_data
     )
     expected_name_format = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
 
-    assert created_template_name == expected_name_format, "Template name does not match the expected format."
+    assert created_template.name == expected_name_format, "Template name does not match the expected format."
+    expected_inspect_template = "projects/ma-crest-data-test/locations/us-central1/inspectTemplates/personal-infor-inspect"
+    
+    advanced_config = created_template.filter_config.sdp_settings.advanced_config
+    assert advanced_config.inspect_template == expected_inspect_template, \
+        f"Expected inspect_template to be {expected_inspect_template}, but got {advanced_config.inspect_template}"
+
+    # Assert that the deidentify_template is as expected
+    expected_deidentify_template = "projects/ma-crest-data-test/locations/us-central1/deidentifyTemplates/personal-info-de-identify"
+    assert advanced_config.deidentify_template == expected_deidentify_template, \
+        f"Expected deidentify_template to be {expected_deidentify_template}, but got {advanced_config.deidentify_template}"
+
+def test_create_model_armor_template_with_metadata(project_id, location_id, simple_filter_config_data, template_id, template_metadata):
+    """
+    Tests that the create_model_armor_template function returns a template name
+    that matches the expected format.
+    """
+    created_template = create_model_armor_template_with_metadata(
+        project_id, location_id, template_id, simple_filter_config_data, template_metadata
+    )
+    expected_name_format = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
+
+    assert created_template.name == expected_name_format, "Template name does not match the expected format."
+    assert created_template.template_metadata.ignore_partial_invocation_failures == True
+    assert created_template.template_metadata.log_sanitize_operations == True
+
+def test_create_model_armor_template_with_labels(project_id, location_id, simple_filter_config_data, template_id, template_labels):
+    """
+    Tests that the test_create_model_armor_template_with_labels function returns a template name
+    that matches the expected format.
+    """
+    expected_labels = {
+        "name": "wrench",
+        "count": "3"
+    }
+
+    created_template = create_model_armor_template_with_labels(
+        project_id, location_id, template_id, simple_filter_config_data, template_labels
+    )
+    expected_name_format = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
+
+    assert created_template.name == expected_name_format, "Template name does not match the expected format."
+    
+    template_with_lables = view_model_armor_template(
+        project_id, location_id, template_id
+    )
+
+    for key, value in expected_labels.items():
+        assert template_with_lables.labels.get(key) == value, f"Label {key} does not match. Expected: {value}, Got: {template_with_lables.labels.get(key)}"
 
 def test_delete_model_armor_template(project_id, location_id, simple_template):
     """
@@ -307,7 +380,21 @@ def test_list_model_armor_templates(project_id, location_id, simple_template):
     expected_template_name = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
     assert any(
         template.name == expected_template_name for template in templates), "Template does not exist in the list"
-    
+
+def test_list_model_armor_templates_with_filter(project_id, location_id, simple_template):
+    """
+    Tests that the list_model_armor_templates function returns a list of templates
+    containing the created template.
+    """
+    template_id, _ = simple_template
+
+    templates = list_model_armor_templates_with_filter(project_id, location_id, template_id)
+
+    expected_template_name = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
+
+    assert any(
+        template.name == expected_template_name for template in templates), "Template does not exist in the list"
+
 def test_sanitize_user_prompt_with_basic_sdp_template(project_id, location_id, basic_sdp_template, user_prompt):
     """
     Tests that the model response is sanitized correctly with a basic sdp template
@@ -374,13 +461,74 @@ def test_update_model_armor_template(project_id, location_id, simple_template, b
     """
     template_id, _ = simple_template
 
-    updated_template_name = update_model_armor_template(
+    updated_template = update_model_armor_template(
         project_id, location_id, template_id, basic_sdp_config_data
     )
 
     expected_name_format = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
 
-    assert updated_template_name == expected_name_format, "Template name does not match the expected format."
+    assert updated_template.name == expected_name_format, "Template name does not match the expected format."
+
+def test_update_model_armor_template_with_metadata(project_id, location_id, simple_template, basic_sdp_config_data, template_metadata):
+    """
+    Tests that the update_model_armor_template function returns a template name
+    that matches the expected format.
+    """
+    template_id, _ = simple_template
+
+    updated_template = update_model_armor_template_with_metadata(
+        project_id, location_id, template_id, basic_sdp_config_data, template_metadata
+    )
+
+    expected_name_format = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
+
+    assert updated_template.name == expected_name_format, "Template name does not match the expected format."
+    assert updated_template.template_metadata.ignore_partial_invocation_failures == True
+    assert updated_template.template_metadata.log_sanitize_operations == True
+
+def test_update_model_armor_template_with_lables(project_id, location_id, simple_template, basic_sdp_config_data, template_labels):
+    """
+    Tests that the test_update_model_armor_template_with_labels function returns a template name
+    that matches the expected format.
+    """
+    expected_labels = {
+        "name": "wrench",
+        "count": "3"
+    }
+
+    template_id, _ = simple_template
+
+    updated_template = update_model_armor_template_with_lables(
+        project_id, location_id, template_id, basic_sdp_config_data, template_labels
+    )
+    expected_name_format = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
+
+    assert updated_template.name == expected_name_format, "Template name does not match the expected format."
+    
+    template_with_lables = view_model_armor_template(
+        project_id, location_id, template_id
+    )
+
+    for key, value in expected_labels.items():
+        assert template_with_lables.labels.get(key) == value, f"Label {key} does not match. Expected: {value}, Got: {template_with_lables.labels.get(key)}"
+
+def test_update_model_armor_template_with_mask_configuration(project_id, location_id, simple_template, basic_sdp_config_data, mask_configuration):
+    """
+    Tests that the update_model_armor_template function returns a template name
+    with mask configuration.
+    """
+    template_id, _ = simple_template
+
+    updated_template = update_model_armor_template_with_mask_configuration(
+        project_id, location_id, template_id, basic_sdp_config_data
+    )
+
+    expected_name_format = f"projects/{project_id}/locations/{location_id}/templates/{template_id}"
+
+    assert updated_template.name == expected_name_format, "Template name does not match the expected format."
+
+    filter_enforcement = updated_template.filter_config.sdp_settings.basic_config.filter_enforcement
+    assert filter_enforcement.name != "ENABLED", f"Expected filter_enforcement not to be ENABLED, but got {filter_enforcement}"
 
 def test_view_model_armor_template(project_id, location_id, simple_template):
     """

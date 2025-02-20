@@ -1,7 +1,7 @@
 
-# python-docs-samples/modelarmor/create_model_armor_template.py
+# python-docs-samples/modelarmor/create_model_armor_template_with_labels.py
 
-# Copyright 2025 Google LLC
+# Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,8 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
+
 # [START create_model_armor_template]
-def create_model_armor_template(project_id, location_id, template_id, filter_config_data):
+def create_model_armor_template_with_labels(project_id, location_id, template_id, filter_config_data, lables):
     """
     Creates a new model armor template.
 
@@ -25,9 +27,10 @@ def create_model_armor_template(project_id, location_id, template_id, filter_con
         location_id (str): Google Cloud location where the template will be created.
         template_id (str): ID for the template to create.
         filter_config (dict): Configuration for the filter settings of the template.
+        lables (dict): Configuration for the labels of the template.
 
     Returns:
-        The created Template's name.
+        The created Template.
     """
     from google.cloud import modelarmor_v1
     from google.api_core.client_options import ClientOptions
@@ -41,7 +44,8 @@ def create_model_armor_template(project_id, location_id, template_id, filter_con
     filter_config = modelarmor_v1.FilterConfig(**filter_config_data)
 
     template = modelarmor_v1.Template(
-        filter_config=filter_config
+        filter_config=filter_config,
+        labels=lables
     )
 
     # CreateTemplatRequest creation
@@ -56,7 +60,6 @@ def create_model_armor_template(project_id, location_id, template_id, filter_con
         request=create_template
     )
 
-    print(f"Created Model Armor Template: {response.name}")
     # [END create_model_armor_template]
 
     return response

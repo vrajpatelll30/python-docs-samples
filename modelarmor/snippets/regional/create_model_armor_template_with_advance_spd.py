@@ -1,7 +1,7 @@
 
 # python-docs-samples/modelarmor/create_model_armor_template_with_advance_sdp.py
 
-# Copyright 2021 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 import argparse
 
 # [START modelarmor_create_model_armor_template_with_advance_sdp]
-def create_model_armor_template(project_id, location_id, template_id, filter_config_data):
+def create_model_armor_template_with_advance_spd(project_id, location_id, template_id, filter_config_data):
     """
     Creates a new model armor template.
 
@@ -61,20 +61,4 @@ def create_model_armor_template(project_id, location_id, template_id, filter_con
     print(f"Created Model Armor Template: {response.name}")
     # [END modelarmor_create_model_armor_template_with_advance_sdp]
 
-    return response.name
-
-if __name__ == "__main__":
-    # Sample usage
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    
-    parser.add_argument("project_id", help="GCP project ID")
-    parser.add_argument("location_id", help="GCP location")
-    parser.add_argument("template_id", help="Template ID")
-    parser.add_argument("filter_config_data", help="Filter config data")
-    
-    args = parser.parse_args()
-
-    # Call the function with sample data
-    create_model_armor_template(args.project_id, args.location_id, args.template_id, args.filter_config_data)
+    return response
